@@ -35,12 +35,21 @@ void bar(){
 基于 CPU 缓存设计上的特点，带来了内存可见性的问题，进一步造成“看似”指令乱序的现象
 
 ## Store buffer
+CPU修改Cache Line中的变量时，要通过总线发送Invalidate信息给远程CPU，等到远程CPU返回ACK，才能进行继续修改。如果远程的CPU比较繁忙，会带来更大的延迟。
 在CPU和L1Cache之间引入Store buffer来对cache line的写操作进行优化。
 * 写操作写入Store Buffer后就返回，同时向其它核心发出Invalidate消息。
 * 等CPU的Invalidate ACK消息返回后再异步写进Cache Line
 * 核心从Cache中读取前都要先扫描自己的Store buffers来确认是否存在目标行。有可能当前核心在这次操作之前曾经写入cache，但该数据还没有被刷入cache(之前的写操作还在 store buffer 中等待)。
 
 [CPU缓存架构到内存屏障](https://blog.chongsheng.art/post/golang/cpu-cache-memory-barrier/)
+
+
+## memory barrier
+上面两小节中可已看出memory barrier的作用，上面提到的smp_mb()是一种full memory barrier，他会将store buffer和invalidate queue都flush一遍。但是就像上面例子中体现的那样有时候我们不用两个都flush，于是硬件设计者引入了read memory barrier和write memory barrier。
+* read memory barrier会将invalidate queue flush。
+* write memory barrier会将storebuffer flush。
+
+[高并发编程–多处理器编程中的一致性问题(上)](https://zhuanlan.zhihu.com/p/48157076)
 
 
 ## refer
