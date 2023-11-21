@@ -26,13 +26,22 @@
 ## barrier对齐
 
 * JobManager定时发送Barrier
-* Barrier对齐：下游算子需要收到所有依赖的上游的Barrier。
-* barrier对齐前，先到的数据需要缓存。
+* 算子需要收到所有依赖的上游的Barrier，开始checkpoint
+* 精准一次：先到的数据需要缓存。
+* 至少一次：先到的数据无需缓存。
 
 ## Unalignment Barrier
-核心思想: **只要in-fight的数据也存到状态里，barrier就可以越过所有in-fight的数据继续往下游传递**。
+核心思想: **只要in-flight的数据也存到状态里，barrier就可以越过所有in-flight的数据继续往下游传递**，
+也就是一个快照，下次恢复时，把in-flight的数据重新处理，就可以达到和对齐一样的状态。
 当第一个Barrier到达输入线冲区时:
 * 直接将barrier放到输出缓冲区末端句下游传递
 * 标记第一个barrier越过的输入缓冲区和输出缓冲区的数据
 * 标记其他barrier之前的所有数据
 * 把标记数据和状态一起保存到checkpint中，从checkpoint恢复时这些数据也会一起恢复到对应位置
+* 可以设置alignedCheckpointTimeout参数，优先对齐，当对齐超时后，使用非对齐。
+
+## 为什么输出缓冲区也需要保存？
+
+## barrier提前向后传，导致checkpoint也会提前，会保存更多额外的数据，产生较大的io压力，慎用之！！！
+
+
